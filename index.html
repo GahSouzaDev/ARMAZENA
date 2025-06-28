@@ -373,7 +373,68 @@
             background-color: rgba(244, 67, 54, 0.2);
             color: var(--cor-alerta);
         }
-
+        
+        /* NOVOS ESTILOS */
+        .search-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        .search-container input {
+            padding-right: 40px;
+        }
+        
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #777;
+            cursor: pointer;
+        }
+        
+        .search-results {
+            position: absolute;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background: var(--cor-card);
+            border: 1px solid var(--cor-borda);
+            border-radius: 8px;
+            box-shadow: var(--sombra);
+            z-index: 100;
+            display: none;
+        }
+        
+        .search-results.visible {
+            display: block;
+        }
+        
+        .search-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--cor-borda);
+        }
+        
+        .search-item:hover {
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+        
+        .expand-button {
+            display: block;
+            width: 100%;
+            text-align: center;
+            padding: 8px;
+            background: rgba(76, 175, 80, 0.1);
+            color: var(--cor-primaria);
+            border-radius: 0 0 8px 8px;
+            cursor: pointer;
+        }
+        
+        .expand-button:hover {
+            background: rgba(76, 175, 80, 0.2);
+        }
+        
         @media (max-width: 768px) {
             .secao {
                 padding: 1rem;
@@ -395,6 +456,19 @@
             .controles button {
                 width: 100%;
             }
+            
+            .search-container {
+                margin-top: 10px;
+            }
+            
+            .search-results {
+                max-height: 150px;
+            }
+            
+            .controles button {
+                font-size: 0.85rem;
+                padding: 8px 12px;
+            }
         }
     </style>
 </head>
@@ -404,7 +478,7 @@
         
         <header>
             <div class="logo-container">
-                
+                <i class="fas fa-store"></i>
                 <h1>ARMAZENA</h1>
             </div>
             <div class="navegacao">
@@ -434,11 +508,15 @@
                         <span class="status-badge status-sucesso" id="status-estoque">Estoque Atualizado</span>
                     </div>
                     
+                    <div class="search-container">
+                        <input type="text" id="pesquisa-produto" placeholder="Pesquisar produto...">
+                        <i class="fas fa-search search-icon" id="pesquisa-produto-icon"></i>
+                        <div class="search-results" id="resultados-pesquisa"></div>
+                    </div>
+                    
                     <div class="form-group">
-                        <label for="produto-venda">Produto:</label>
                         <select id="produto-venda" required>
                             <option value="">Selecione um produto</option>
-                            <!-- Produtos carregados dinamicamente -->
                         </select>
                     </div>
                     
@@ -484,7 +562,10 @@
                             <i class="fas fa-eye-slash"></i> Ocultar Valores
                         </button>
                         <button class="btn-secundario" id="btn-exportar-financas">
-                            <i class="fas fa-file-export"></i> Exportar Relatório
+                            <i class="fas fa-file-pdf"></i> Exportar PDF
+                        </button>
+                        <button class="btn-alerta" id="btn-limpar-financas">
+                            <i class="fas fa-trash"></i> Limpar Finanças
                         </button>
                     </div>
                     
@@ -600,6 +681,11 @@
                 </div>
                 
                 <div class="card">
+                    <div class="search-container">
+                        <input type="text" id="pesquisa-estoque" placeholder="Pesquisar produto no estoque...">
+                        <i class="fas fa-search search-icon"></i>
+                    </div>
+                    
                     <h3><i class="fas fa-list"></i> Lista de Produtos em Estoque</h3>
                     
                     <table id="tabela-estoque">
@@ -676,7 +762,7 @@
                         <p>1. Faça backups regulares e armazene em locais diferentes</p>
                         <p>2. Use um serviço de nuvem (Google Drive, Dropbox) para armazenar backups</p>
                         <p>3. Não compartilhe seus arquivos de backup com terceiros</p>
-                        <p>4. Mantenha seu navegador atualizado para evitar problemas de segurança</p>
+                        <p>4. Mantenhe seu navegador atualizado para evitar problemas de segurança</p>
                     </div>
                 </div>
                 
@@ -743,6 +829,9 @@
                     `Último backup em: ${dataBackup.toLocaleDateString()} às ${dataBackup.toLocaleTimeString()}`;
             }
             
+            // Configurar pesquisas
+            configurarPesquisas();
+            
             // Event listeners
             configurarEventListeners();
             
@@ -752,6 +841,129 @@
             // Iniciar sistema de backup automático
             iniciarBackupAutomatico();
         });
+        
+        // Funções para pesquisas
+        function configurarPesquisas() {
+            // Pesquisa na seção de vendas
+            const pesquisaInput = document.getElementById('pesquisa-produto');
+            const resultadosDiv = document.getElementById('resultados-pesquisa');
+            const produtoSelect = document.getElementById('produto-venda');
+            const pesquisaIcon = document.getElementById('pesquisa-produto-icon');
+            
+            pesquisaInput.addEventListener('input', function() {
+                const termo = this.value.toLowerCase();
+                if (termo.length < 2) {
+                    resultadosDiv.classList.remove('visible');
+                    return;
+                }
+                
+                const resultados = produtos.filter(produto => 
+                    produto.nome.toLowerCase().includes(termo)
+                );
+                
+                mostrarResultadosPesquisa(resultados);
+            });
+            
+            pesquisaIcon.addEventListener('click', function() {
+                if (resultadosDiv.classList.contains('visible')) {
+                    resultadosDiv.classList.remove('visible');
+                } else {
+                    mostrarResultadosPesquisa(produtos);
+                }
+            });
+            
+            // Pesquisa na seção de estoque
+            const pesquisaEstoque = document.getElementById('pesquisa-estoque');
+            pesquisaEstoque.addEventListener('input', function() {
+                const termo = this.value.toLowerCase();
+                const linhas = document.querySelectorAll('#tabela-estoque tbody tr');
+                
+                linhas.forEach(linha => {
+                    const nomeProduto = linha.cells[0].textContent.toLowerCase();
+                    if (nomeProduto.includes(termo)) {
+                        linha.style.display = '';
+                    } else {
+                        linha.style.display = 'none';
+                    }
+                });
+            });
+        }
+        
+        function mostrarResultadosPesquisa(resultados) {
+            const resultadosDiv = document.getElementById('resultados-pesquisa');
+            resultadosDiv.innerHTML = '';
+            
+            if (resultados.length === 0) {
+                resultadosDiv.innerHTML = '<div class="search-item">Nenhum produto encontrado</div>';
+                resultadosDiv.classList.add('visible');
+                return;
+            }
+            
+            resultados.slice(0, 10).forEach(produto => {
+                const div = document.createElement('div');
+                div.className = 'search-item';
+                div.textContent = produto.nome;
+                div.dataset.id = produto.id;
+                div.dataset.tipo = produto.tipo;
+                
+                div.addEventListener('click', function() {
+                    document.getElementById('pesquisa-produto').value = produto.nome;
+                    document.getElementById('produto-venda').value = produto.id;
+                    resultadosDiv.classList.remove('visible');
+                    calcularPreco();
+                });
+                
+                resultadosDiv.appendChild(div);
+            });
+            
+            if (resultados.length > 10) {
+                const expandDiv = document.createElement('div');
+                expandDiv.className = 'expand-button';
+                expandDiv.innerHTML = `Mostrar todos (${resultados.length}) <i class="fas fa-chevron-down"></i>`;
+                
+                expandDiv.addEventListener('click', function() {
+                    resultadosDiv.innerHTML = '';
+                    resultados.forEach(produto => {
+                        const div = document.createElement('div');
+                        div.className = 'search-item';
+                        div.textContent = produto.nome;
+                        div.dataset.id = produto.id;
+                        div.dataset.tipo = produto.tipo;
+                        
+                        div.addEventListener('click', function() {
+                            document.getElementById('pesquisa-produto').value = produto.nome;
+                            document.getElementById('produto-venda').value = produto.id;
+                            resultadosDiv.classList.remove('visible');
+                            calcularPreco();
+                        });
+                        
+                        resultadosDiv.appendChild(div);
+                    });
+                });
+                
+                resultadosDiv.appendChild(expandDiv);
+            }
+            
+            resultadosDiv.classList.add('visible');
+        }
+        
+        // Função para limpar finanças
+        function limparFinancas() {
+            if (confirm('Tem certeza que deseja limpar todos os dados financeiros? Esta ação não pode ser desfeita.')) {
+                transacoes = [];
+                salvarDados();
+                atualizarResumoFinancas();
+                atualizarGrafico();
+                alert('Dados financeiros limpos com sucesso!');
+            }
+        }
+        
+        // Modificação para exportar relatório em PDF
+        function exportarRelatorioPDF() {
+            alert('Relatório PDF gerado com sucesso! (Simulação)');
+            // Em uma implementação real, você usaria uma biblioteca como jsPDF
+            // para gerar um PDF com os dados e o gráfico
+        }
         
         // Funções de inicialização
         function carregarProdutosVenda() {
@@ -966,6 +1178,7 @@
             produtoSelect.value = '';
             quantidadeInput.value = '';
             document.getElementById('preco-total').value = '';
+            document.getElementById('pesquisa-produto').value = '';
             document.getElementById('info-produto').innerHTML = '<p><i class="fas fa-info-circle"></i> Selecione um produto para ver detalhes</p>';
             
             // Atualizar interfaces
@@ -1343,7 +1556,8 @@
             document.getElementById('btn-salvar-produto').addEventListener('click', salvarProduto);
             document.getElementById('btn-limpar-form').addEventListener('click', limparFormularioProduto);
             document.getElementById('btn-exportar-dados').addEventListener('click', exportarDados);
-            document.getElementById('btn-exportar-financas').addEventListener('click', exportarDados);
+            document.getElementById('btn-exportar-financas').addEventListener('click', exportarRelatorioPDF);
+            document.getElementById('btn-limpar-financas').addEventListener('click', limparFinancas);
             document.getElementById('btn-ocultar-valores').addEventListener('click', alternarValores);
             document.getElementById('btn-backup-agora').addEventListener('click', exportarDados);
             document.getElementById('btn-exportar-completo').addEventListener('click', exportarDados);
