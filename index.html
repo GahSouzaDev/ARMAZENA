@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARMAZENA</title>
+    <title>ARMAZENA - Sistema de Gestão</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Corrigindo o carregamento do jsPDF e autoTable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -435,6 +439,34 @@
             background: rgba(76, 175, 80, 0.2);
         }
         
+        /* Estilos para o modal de carregamento */
+        .modal-carregamento {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-conteudo {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        
+        .carregando {
+            font-size: 20px;
+            margin-top: 15px;
+            color: #333;
+        }
+        
         @media (max-width: 768px) {
             .secao {
                 padding: 1rem;
@@ -475,6 +507,14 @@
 <body>
     <div class="container">
         <div class="tema-btn" id="tema-btn">🌙</div>
+        
+        <!-- Modal de carregamento -->
+        <div class="modal-carregamento" id="modal-carregamento">
+            <div class="modal-conteudo">
+                <i class="fas fa-spinner fa-spin fa-3x"></i>
+                <div class="carregando">Gerando relatório PDF...</div>
+            </div>
+        </div>
         
         <header>
             <div class="logo-container">
@@ -800,6 +840,7 @@
         const secoes = document.getElementById('secoes');
         const navBtns = document.querySelectorAll('.nav-btn');
         const temaBtn = document.getElementById('tema-btn');
+        const modalCarregamento = document.getElementById('modal-carregamento');
         
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
@@ -958,13 +999,145 @@
             }
         }
         
-        // Modificação para exportar relatório em PDF
-        function exportarRelatorioPDF() {
-            alert('Relatório PDF gerado com sucesso! (Simulação)');
-            // Em uma implementação real, você usaria uma biblioteca como jsPDF
-            // para gerar um PDF com os dados e o gráfico
+        // Função para gerar relatório financeiro em PDF
+        async function gerarRelatorioPDF() {
+            // Exibir modal de carregamento
+            modalCarregamento.style.display = 'flex';
+            
+            try {
+                // Criar conteúdo do relatório
+                const mesSelecionado = document.getElementById('mes-grafico').value;
+                const dataAtual = new Date().toLocaleDateString('pt-BR');
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Configurações do documento
+                doc.setFontSize(22);
+                doc.setTextColor(46, 125, 50); // Verde escuro
+                doc.text('Relatório Financeiro', 105, 20, null, null, 'center');
+                
+                doc.setFontSize(12);
+                doc.setTextColor(100);
+                doc.text(`Mês: ${mesSelecionado}`, 105, 28, null, null, 'center');
+                doc.text(`Gerado em: ${dataAtual}`, 105, 35, null, null, 'center');
+                
+                // Adicionar resumo financeiro
+                doc.setFontSize(16);
+                doc.setTextColor(0);
+                doc.text('Resumo Financeiro', 20, 50);
+                
+                doc.setFontSize(12);
+                doc.text(`Vendas: ${document.getElementById('total-vendas').textContent}`, 20, 60);
+                doc.text(`Despesas: ${document.getElementById('total-despesas').textContent}`, 20, 68);
+                doc.text(`Saldo: ${document.getElementById('saldo').textContent}`, 20, 76);
+                
+                // Adicionar gráfico
+                const canvas = document.createElement('canvas');
+                canvas.width = 600;
+                canvas.height = 400;
+                const ctx = canvas.getContext('2d');
+                
+                // Renderizar gráfico para impressão
+                const transacoesMes = transacoes.filter(t => {
+                    const dataTransacao = new Date(t.data);
+                    const mesTransacao = `${dataTransacao.getFullYear()}-${String(dataTransacao.getMonth() + 1).padStart(2, '0')}`;
+                    return mesTransacao === mesSelecionado;
+                });
+                
+                const vendas = transacoesMes
+                    .filter(t => t.tipo === 'venda')
+                    .reduce((total, t) => total + t.valor, 0);
+                
+                const despesas = transacoesMes
+                    .filter(t => t.tipo === 'despesa')
+                    .reduce((total, t) => total + t.valor, 0);
+                
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Vendas', 'Despesas'],
+                        datasets: [{
+                            data: [vendas, despesas],
+                            backgroundColor: ['#4CAF50', '#F44336']
+                        }]
+                    },
+                    options: {
+                        responsive: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Vendas vs Despesas'
+                            }
+                        }
+                    }
+                });
+                
+                // Esperar um pouco para o gráfico renderizar
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Converter canvas para imagem
+                const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                doc.addImage(imgData, 'JPEG', 30, 90, 150, 100);
+                
+                // Adicionar tabela de transações
+                doc.setFontSize(16);
+                doc.text('Detalhamento de Transações', 20, 210);
+                
+                // Preparar dados da tabela
+                const tableData = [];
+                const header = [['Data', 'Tipo', 'Descrição', 'Valor (R$)']];
+                
+                transacoesMes.forEach(t => {
+                    const tipo = t.tipo === 'venda' ? 'Venda' : 'Despesa';
+                    const valor = formatarMoeda(t.valor);
+                    tableData.push([t.data, tipo, t.descricao, valor]);
+                });
+                
+                // Adicionar tabela manualmente se não houver transações
+                if (tableData.length === 0) {
+                    doc.setFontSize(12);
+                    doc.text('Nenhuma transação registrada neste período', 20, 220);
+                } else {
+                    // Usar autoTable corretamente
+                    doc.autoTable({
+                        startY: 220,
+                        head: header,
+                        body: tableData,
+                        theme: 'grid',
+                        headStyles: { 
+                            fillColor: [46, 125, 50],
+                            textColor: [255, 255, 255],
+                            fontStyle: 'bold'
+                        },
+                        styles: { 
+                            fontSize: 10, 
+                            cellPadding: 3,
+                            valign: 'middle'
+                        },
+                        columnStyles: {
+                            0: { cellWidth: 30 },
+                            1: { cellWidth: 25 },
+                            2: { cellWidth: 85 },
+                            3: { cellWidth: 30 }
+                        }
+                    });
+                }
+                
+                // Salvar PDF
+                doc.save(`relatorio-financeiro-${mesSelecionado}.pdf`);
+                
+            } catch (error) {
+                console.error('Erro ao gerar PDF:', error);
+                alert('Ocorreu um erro ao gerar o PDF. Verifique o console para mais detalhes.');
+            } finally {
+                // Ocultar modal de carregamento
+                modalCarregamento.style.display = 'none';
+            }
         }
-        
+
         // Funções de inicialização
         function carregarProdutosVenda() {
             const select = document.getElementById('produto-venda');
@@ -1556,7 +1729,7 @@
             document.getElementById('btn-salvar-produto').addEventListener('click', salvarProduto);
             document.getElementById('btn-limpar-form').addEventListener('click', limparFormularioProduto);
             document.getElementById('btn-exportar-dados').addEventListener('click', exportarDados);
-            document.getElementById('btn-exportar-financas').addEventListener('click', exportarRelatorioPDF);
+            document.getElementById('btn-exportar-financas').addEventListener('click', gerarRelatorioPDF);
             document.getElementById('btn-limpar-financas').addEventListener('click', limparFinancas);
             document.getElementById('btn-ocultar-valores').addEventListener('click', alternarValores);
             document.getElementById('btn-backup-agora').addEventListener('click', exportarDados);
