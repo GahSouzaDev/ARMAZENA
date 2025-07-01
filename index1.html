@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ARMAZENA - Sistema de Gestão</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Corrigindo o carregamento do jsPDF e autoTable -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -467,6 +466,74 @@
             color: #333;
         }
         
+        /* Novo estilo para a instrução de cálculo bidirecional */
+        .instrucao-bidirecional {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: rgba(33, 150, 243, 0.1);
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        
+        /* Melhorias na seção de vendas */
+        .form-campos-duplos {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .form-campos-duplos .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        
+        .info-produto-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .info-produto-item {
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 6px;
+        }
+        
+        .info-produto-item strong {
+            display: block;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        
+        .info-produto-item span {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .valor-destaque {
+            color: var(--cor-primaria);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .valor-aviso {
+            color: var(--cor-aviso);
+        }
+        
+        .icone-calculo {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--cor-primaria);
+        }
+        
+        .input-calculo {
+            padding-right: 40px !important;
+        }
+
         @media (max-width: 768px) {
             .secao {
                 padding: 1rem;
@@ -500,6 +567,15 @@
             .controles button {
                 font-size: 0.85rem;
                 padding: 8px 12px;
+            }
+            
+            .form-campos-duplos {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .info-produto-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -538,7 +614,7 @@
         </header>
         
         <div class="secoes" id="secoes">
-            <!-- Seção de Vendas -->
+            <!-- Seção de Vendas com modificações -->
             <section class="secao" id="vendas">
                 <h2 class="secao-titulo"><i class="fas fa-shopping-cart"></i> Registro de Vendas</h2>
                 
@@ -560,14 +636,26 @@
                         </select>
                     </div>
                     
-                    <div class="form-group">
-                        <label id="label-quantidade">Quantidade:</label>
-                        <input type="number" id="quantidade-venda" min="0.01" step="0.01" required>
+                    <div class="form-campos-duplos">
+                        <div class="form-group">
+                            <label id="label-quantidade">Quantidade:</label>
+                            <div class="input-container">
+                                <input type="number" id="quantidade-venda" min="0.01" step="0.01" placeholder="Digite a quantidade" class="input-calculo">
+                                <i class="fas fa-calculator icone-calculo"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="preco-total">Valor Total (R$):</label>
+                            <div class="input-container">
+                                <input type="number" id="preco-total" min="0.01" step="0.01" placeholder="Digite o valor total" class="input-calculo">
+                                <i class="fas fa-calculator icone-calculo"></i>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="preco-total">Preço Total (R$):</label>
-                        <input type="text" id="preco-total" readonly>
+                    <div class="instrucao-bidirecional">
+                        <i class="fas fa-info-circle"></i> Digite a quantidade OU o valor total - o sistema calculará automaticamente o outro campo
                     </div>
                     
                     <div id="info-produto" class="info-card">
@@ -587,8 +675,9 @@
                     <h3><i class="fas fa-lightbulb"></i> Instruções</h3>
                     <p>1. Selecione o produto na lista</p>
                     <p>2. Informe a quantidade em kg (granel) ou unidades (pacote fechado)</p>
-                    <p>3. O preço total será calculado automaticamente</p>
-                    <p>4. Clique em "Registrar Venda" para confirmar</p>
+                    <p>3. <strong>OU</strong> informe o valor total desejado</p>
+                    <p>4. O sistema calculará automaticamente o campo correspondente</p>
+                    <p>5. Clique em "Registrar Venda" para confirmar</p>
                 </div>
             </section>
             
@@ -835,6 +924,7 @@
         let graficoPizza = null;
         let temaEscuro = localStorage.getItem('temaEscuro') === 'true';
         let tipoProdutoAtual = 'granel';
+        let emAtualizacao = false; // Flag para evitar loops de atualização
         
         // Elementos DOM
         const secoes = document.getElementById('secoes');
@@ -951,7 +1041,10 @@
                     document.getElementById('pesquisa-produto').value = produto.nome;
                     document.getElementById('produto-venda').value = produto.id;
                     resultadosDiv.classList.remove('visible');
-                    calcularPreco();
+                    
+                    // Disparar evento change para atualizar informações
+                    const event = new Event('change');
+                    document.getElementById('produto-venda').dispatchEvent(event);
                 });
                 
                 resultadosDiv.appendChild(div);
@@ -975,7 +1068,10 @@
                             document.getElementById('pesquisa-produto').value = produto.nome;
                             document.getElementById('produto-venda').value = produto.id;
                             resultadosDiv.classList.remove('visible');
-                            calcularPreco();
+                            
+                            // Disparar evento change para atualizar informações
+                            const event = new Event('change');
+                            document.getElementById('produto-venda').dispatchEvent(event);
                         });
                         
                         resultadosDiv.appendChild(div);
@@ -1288,14 +1384,124 @@
             }, 5000);
         }
         
+        // Função para calcular o valor total a partir da quantidade
+        function calcularAPartirDaQuantidade() {
+            emAtualizacao = true;
+            
+            const produtoId = document.getElementById('produto-venda').value;
+            const quantidadeInput = document.getElementById('quantidade-venda');
+            const precoTotalInput = document.getElementById('preco-total');
+            
+            const quantidade = parseFloat(quantidadeInput.value);
+            
+            if (produtoId && !isNaN(quantidade) && quantidade > 0) {
+                const produto = produtos.find(p => p.id === produtoId);
+                if (produto) {
+                    // Para produtos em unidade, garantir que a quantidade seja inteira
+                    if (produto.tipo === 'unidade' && !Number.isInteger(quantidade)) {
+                        quantidadeInput.value = Math.round(quantidade);
+                    }
+                    
+                    const precoTotal = quantidade * produto.precoVenda;
+                    precoTotalInput.value = precoTotal.toFixed(2);
+                    
+                    // Atualizar informações do produto
+                    atualizarInfoProduto(produto);
+                }
+            } else if (!produtoId) {
+                precoTotalInput.value = '';
+            }
+            
+            emAtualizacao = false;
+        }
+
+        // Função para calcular a quantidade a partir do valor total
+        function calcularAPartirDoValor() {
+            emAtualizacao = true;
+            
+            const produtoId = document.getElementById('produto-venda').value;
+            const quantidadeInput = document.getElementById('quantidade-venda');
+            const precoTotalInput = document.getElementById('preco-total');
+            
+            const precoTotal = parseFloat(precoTotalInput.value);
+            
+            if (produtoId && !isNaN(precoTotal) && precoTotal > 0) {
+                const produto = produtos.find(p => p.id === produtoId);
+                if (produto) {
+                    let quantidade = precoTotal / produto.precoVenda;
+                    
+                    // Para produtos em unidade, arredondar para o inteiro mais próximo
+                    if (produto.tipo === 'unidade') {
+                        quantidade = Math.round(quantidade);
+                    } else {
+                        // Para granel, limitar a 2 casas decimais
+                        quantidade = parseFloat(quantidade.toFixed(2));
+                    }
+                    
+                    quantidadeInput.value = quantidade;
+                    
+                    // Recalcular o valor total com a quantidade ajustada
+                    const novoPrecoTotal = quantidade * produto.precoVenda;
+                    precoTotalInput.value = novoPrecoTotal.toFixed(2);
+                    
+                    // Atualizar informações do produto
+                    atualizarInfoProduto(produto);
+                }
+            } else if (!produtoId) {
+                quantidadeInput.value = '';
+            }
+            
+            emAtualizacao = false;
+        }
+
+        // Função para atualizar as informações do produto
+        function atualizarInfoProduto(produto) {
+            const estoqueFormatado = produto.tipo === 'granel' ? 
+                `${produto.estoque.toFixed(2)} kg` : 
+                `${produto.estoque} unidades`;
+            
+            const estoqueStatus = produto.estoque < produto.estoqueMinimo ? 
+                `<span class="valor-aviso">${estoqueFormatado} (baixo)</span>` : 
+                `<span>${estoqueFormatado}</span>`;
+            
+            const infoHTML = `
+                <div class="info-produto-grid">
+                    <div class="info-produto-item">
+                        <strong>Produto</strong>
+                        <span>${produto.nome}</span>
+                    </div>
+                    <div class="info-produto-item">
+                        <strong>Tipo</strong>
+                        <span>${produto.tipo === 'granel' ? 'Granel' : 'Pacote fechado'}</span>
+                    </div>
+                    <div class="info-produto-item">
+                        <strong>Preço por ${produto.tipo === 'granel' ? 'kg' : 'unidade'}</strong>
+                        <span class="valor-destaque">${formatarMoeda(produto.precoVenda)}</span>
+                    </div>
+                    <div class="info-produto-item">
+                        <strong>Estoque disponível</strong>
+                        ${estoqueStatus}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('info-produto').innerHTML = infoHTML;
+            
+            // Atualizar label de quantidade
+            document.getElementById('label-quantidade').textContent = 
+                produto.tipo === 'granel' ? 'Quantidade (kg):' : 'Quantidade (unidades):';
+        }
+
         // Funções de negócio
         function registrarVenda() {
             const produtoSelect = document.getElementById('produto-venda');
             const quantidadeInput = document.getElementById('quantidade-venda');
+            const precoTotalInput = document.getElementById('preco-total');
             const mensagemElemento = document.getElementById('mensagem-venda');
             
             const produtoId = produtoSelect.value;
             const quantidade = parseFloat(quantidadeInput.value);
+            const precoTotal = parseFloat(precoTotalInput.value);
             
             // Validações
             if (!produtoId) {
@@ -1303,12 +1509,26 @@
                 return;
             }
             
+            const produto = produtos.find(p => p.id === produtoId);
+            
+            // Verificar consistência entre quantidade e valor total
+            const valorEsperado = quantidade * produto.precoVenda;
+            const diferenca = Math.abs(valorEsperado - precoTotal);
+            
             if (isNaN(quantidade) || quantidade <= 0) {
                 mostrarMensagem(mensagemElemento, 'Informe uma quantidade válida!', 'erro');
                 return;
             }
             
-            const produto = produtos.find(p => p.id === produtoId);
+            if (isNaN(precoTotal) || precoTotal <= 0) {
+                mostrarMensagem(mensagemElemento, 'Informe um valor total válido!', 'erro');
+                return;
+            }
+            
+            if (diferenca > 0.01) { // Tolerância de 1 centavo
+                mostrarMensagem(mensagemElemento, 'Quantidade e valor total não correspondem!', 'erro');
+                return;
+            }
             
             // Validações específicas por tipo
             if (produto.tipo === 'unidade' && !Number.isInteger(quantidade)) {
@@ -1330,11 +1550,11 @@
             // Calcular valor da venda
             const valorVenda = quantidade * produto.precoVenda;
             
-            // Registrar transação
+            // Registrar transação com data atual
             const transacao = {
                 id: Date.now(),
                 tipo: 'venda',
-                data: new Date().toISOString().split('T')[0],
+                data: new Date().toISOString().split('T')[0], // Sempre usa a data atual
                 descricao: `Venda de ${quantidade} ${produto.tipo === 'granel' ? 'kg' : 'unidades'} de ${produto.nome}`,
                 valor: valorVenda,
                 produtoId: produto.id,
@@ -1350,7 +1570,7 @@
             mostrarMensagem(mensagemElemento, 'Venda registrada com sucesso!', 'sucesso');
             produtoSelect.value = '';
             quantidadeInput.value = '';
-            document.getElementById('preco-total').value = '';
+            precoTotalInput.value = '';
             document.getElementById('pesquisa-produto').value = '';
             document.getElementById('info-produto').innerHTML = '<p><i class="fas fa-info-circle"></i> Selecione um produto para ver detalhes</p>';
             
@@ -1572,7 +1792,7 @@
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = `petfeed-dados-${new Date().toISOString().slice(0, 10)}.json`;
+            a.download = `armazena-dados-${new Date().toISOString().slice(0, 10)}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1654,33 +1874,6 @@
             }
         }
         
-        function calcularPreco() {
-            const produtoId = document.getElementById('produto-venda').value;
-            const quantidade = parseFloat(document.getElementById('quantidade-venda').value);
-            
-            if (!produtoId || isNaN(quantidade) || quantidade <= 0) {
-                document.getElementById('preco-total').value = '';
-                return;
-            }
-            
-            const produto = produtos.find(p => p.id === produtoId);
-            const total = quantidade * produto.precoVenda;
-            document.getElementById('preco-total').value = formatarMoeda(total);
-            
-            // Atualizar informações do produto
-            let infoHTML = `
-                <p><strong>${produto.nome}</strong></p>
-                <p>Tipo: ${produto.tipo === 'granel' ? 'Venda a granel' : 'Pacote fechado'}</p>
-                <p>Preço por ${produto.tipo === 'granel' ? 'kg' : 'unidade'}: ${formatarMoeda(produto.precoVenda)}</p>
-                <p>Estoque disponível: ${produto.tipo === 'granel' ? produto.estoque.toFixed(2) + 'kg' : produto.estoque + ' unidades'}</p>
-            `;
-            document.getElementById('info-produto').innerHTML = infoHTML;
-            
-            // Atualizar label de quantidade
-            document.getElementById('label-quantidade').textContent = 
-                produto.tipo === 'granel' ? 'Quantidade (kg):' : 'Quantidade (unidades):';
-        }
-        
         function configurarEventListeners() {
             // Navegação
             navBtns.forEach(btn => {
@@ -1737,8 +1930,32 @@
             temaBtn.addEventListener('click', alternarTema);
             
             // Campos que disparam cálculos
-            document.getElementById('produto-venda').addEventListener('change', calcularPreco);
-            document.getElementById('quantidade-venda').addEventListener('input', calcularPreco);
+            document.getElementById('produto-venda').addEventListener('change', function() {
+                // Limpar campos ao selecionar novo produto
+                document.getElementById('quantidade-venda').value = '';
+                document.getElementById('preco-total').value = '';
+                
+                // Atualizar informações do produto
+                const produtoId = this.value;
+                if (produtoId) {
+                    const produto = produtos.find(p => p.id === produtoId);
+                    if (produto) {
+                        atualizarInfoProduto(produto);
+                    }
+                } else {
+                    document.getElementById('info-produto').innerHTML = '<p><i class="fas fa-info-circle"></i> Selecione um produto para ver detalhes</p>';
+                }
+            });
+            
+            document.getElementById('quantidade-venda').addEventListener('input', function() {
+                if (emAtualizacao) return;
+                calcularAPartirDaQuantidade();
+            });
+            
+            document.getElementById('preco-total').addEventListener('input', function() {
+                if (emAtualizacao) return;
+                calcularAPartirDoValor();
+            });
             
             // Atualizar gráfico quando mês muda
             document.getElementById('mes-grafico').addEventListener('change', atualizarGrafico);
@@ -1789,7 +2006,7 @@
                             window.backupData = dados;
                         } else {
                             document.getElementById('restore-message').innerHTML = 
-                                `<div class="erro">Arquivo inválido! Certifique-se de que é um backup do PetFeed.</div>`;
+                                `<div class="erro">Arquivo inválido! Certifique-se de que é um backup do sistema.</div>`;
                             document.getElementById('btn-confirmar-restore').disabled = true;
                         }
                     } catch (error) {
