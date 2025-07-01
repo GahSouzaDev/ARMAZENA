@@ -972,8 +972,8 @@
             mesesOrdenados.forEach(mesAno => {
                 const [ano, mes] = mesAno.split('-');
                 const nomesMeses = [
-                    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+                     'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro', 'Janeiro'
                 ];
                 const nomeMes = nomesMeses[parseInt(mes) - 1];
                 
@@ -1259,7 +1259,7 @@
             produtos.forEach(produto => {
                 const option = document.createElement('option');
                 option.value = produto.id;
-                option.textContent = `${produto.nome} (${produto.tipo === 'granel' ? produto.estoque.toFixed(2) + 'kg' : produto.estoque + ' unidades'})`;
+                option.textContent = `${produto.nome} (${produto.tipo === 'granel' ? produto.estoque.toFixed(4) + 'kg' : produto.estoque + ' unidades'})`;
                 option.dataset.tipo = produto.tipo;
                 select.appendChild(option);
             });
@@ -1285,7 +1285,7 @@
                     `<span class="unidade-tag">Pacote</span>`;
                 
                 const estoqueInfo = produto.tipo === 'granel' ? 
-                    `${produto.estoque.toFixed(2)} kg` : 
+                    `${produto.estoque.toFixed(4)} kg` : 
                     `${produto.estoque} unidades`;
                 
                 tr.innerHTML = `
@@ -1423,8 +1423,8 @@ function carregarMesesDisponiveis() {
     mesesOrdenados.forEach(mesAno => {
         const [ano, mes] = mesAno.split('-');
         const nomesMeses = [
-            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+             'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro', 'Janeiro'
         ];
         const nomeMes = nomesMeses[parseInt(mes) - 1];
         
@@ -1577,7 +1577,7 @@ document.getElementById('mes-grafico').addEventListener('change', function() {
                         precoTotalInput.value = novoPrecoTotal.toFixed(2);
                     } else {
                         // Para granel, limitar a 2 casas decimais
-                        quantidade = parseFloat(quantidade.toFixed(2));
+                        quantidade = parseFloat(quantidade.toFixed(4));
                     }
                     
                     quantidadeInput.value = quantidade;
